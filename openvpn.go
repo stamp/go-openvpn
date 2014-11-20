@@ -29,6 +29,7 @@ type Process struct {
 func NewProcess() *Process {
 	p := &Process{
 		Env:     make(map[string]string, 0),
+		Events:  make(chan *Event, 10),
 		Clients: make(map[string]*Client, 0),
 
 		shutdown: make(chan bool),
@@ -176,6 +177,7 @@ func (p *Process) Fire(name string, args ...string) { // {{{
 		Args: args,
 	}:
 	default:
+		log.Warn("Lost event: ", name, " args:", args)
 	}
 } // }}}
 

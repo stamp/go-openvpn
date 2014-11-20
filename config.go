@@ -128,6 +128,7 @@ func (c *Config) ServerMode(port int, ca *openssl.CA, cert *openssl.Cert, dh *op
 	c.flag("tls-server")
 
 	c.set("ca", ca.GetFilePath())
+	c.set("crl-verify", ca.GetCRLPath())
 	c.set("cert", cert.GetFilePath())
 	c.set("key", cert.GetKeyPath())
 	c.set("dh", dh.GetFilePath())
@@ -157,7 +158,7 @@ func (c *Config) IpPool(pool string) {
 	}
 
 	c.set("server", ip.String()+" "+strconv.Itoa(int(net.Mask[0]))+"."+strconv.Itoa(int(net.Mask[1]))+"."+strconv.Itoa(int(net.Mask[2]))+"."+strconv.Itoa(int(net.Mask[3])))
-	c.flag("ifconfig-pool-linear")
+	//c.flag("ifconfig-pool-linear")
 }
 
 // openvpn --genkey --secret static.key
