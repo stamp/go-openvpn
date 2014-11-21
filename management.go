@@ -101,12 +101,16 @@ func (m *Management) Shutdown() {
 func (m *Management) server(c net.Conn) { // {{{
 
 	go func() {
-		c.Write([]byte("echo on\n"))
-		c.Write([]byte("hold release\n"))
 		//c.Write([]byte("status\n"))
-		for {
-			<-time.After(time.Second * 1)
-			c.Write([]byte("status\n"))
+
+		if m.Conn.config.remote == "" {
+			log.Info("Management started in SERVER mode")
+			for {
+				<-time.After(time.Second * 1)
+				c.Write([]byte("status\n"))
+			}
+		} else {
+			log.Info("Management started in CLIENT mode")
 		}
 		/*
 			for {
@@ -123,7 +127,7 @@ func (m *Management) server(c net.Conn) { // {{{
 	go func() {
 		for {
 			rows := <-m.events
-			m.route(rows[0], rows[1:])
+			m.route(c, rows[0], rows[1:])
 		}
 	}()
 
@@ -156,8 +160,9 @@ func (m *Management) parse(line []byte, retry bool) { // {{{
 		"log":      ">LOG:([^\r\n]*)$",  // -- Log message output as controlled by the "log" command.
 		"info":     ">INFO:([^\r\n]*)$", // -- Informational messages such as the welcome message.
 		"error":    "ERROR:([^\r\n]*)$",
-		"fatal":    "FATAL:([^\r\n]*)$", // -- A fatal error which is output to the log file just prior to OpenVPN exiting.
-		"hold":     ">HOLD:([^\r\n]*)$", // -- Used to indicate that OpenVPN is in a holding state and will not start until it receives a "hold release" command.
+		"fatal":    "FATAL:([^\r\n]*)$",  // -- A fatal error which is output to the log file just prior to OpenVPN exiting.
+		"hold":     ">HOLD:([^\r\n]*)$",  // -- Used to indicate that OpenVPN is in a holding state and will not start until it receives a "hold release" command.
+		"state":    ">STATE:([^\r\n]*)$", // -- Show the current OpenVPN state, show state history, or enable real-time notification of state changes.
 		"success":  "SUCCESS: ([^\r\n]*)$",
 		"updown":   ">UPDOWN:([^=,\r\n]+),([^=\r\n]+)=([^\r\n]+)$",
 		"updown-1": ">UPDOWN:([^=\r\n]+)$",
@@ -253,7 +258,7 @@ mainLoop:
 	//log.Error("Buffer: ", string(m.buffer))
 } // }}}
 
-func (m *Management) route(t string, row []string) { // {{{
+func (m *Management) route(c net.Conn, t string, row []string) { // {{{
 	switch t {
 	case "log":
 		log.Trace(row[1])
@@ -264,7 +269,37 @@ func (m *Management) route(t string, row []string) { // {{{
 	case "fatal":
 		log.Critical(row[1])
 	case "hold":
-		//log.Info(row[1]);
+		log.Info("HOLD active:", row[1])
+
+		c.Write([]byte("echo on\n"))
+		c.Write([]byte("state on\n"))
+		c.Write([]byte("hold release\n"))
+	case "state":
+		state := strings.Split(row[1], ",")
+		if len(state) < 2 {
+			log.Error("Failed to decode state:", state)
+			return
+		}
+
+		log.Info("STATE:", state[1])
+
+		switch state[1] {
+		case "CONNECTING":
+		case "RESOLVE":
+		case "WAIT":
+		case "AUTH":
+		case "GET_CONFIG":
+		case "ASSIGN_IP":
+		case "ADD_ROUTES":
+		case "CONNECTED":
+			m.Conn.Fire("Connected", state[3])
+		case "RECONNECTING":
+			m.Conn.Fire("Disconnected")
+		case "EXITING":
+			m.Conn.Fire("Disconnected")
+		default:
+			log.Error("Recived unkown state:", state[1])
+		}
 	case "success":
 		//log.Info(row[1]);
 	case "client-list":
@@ -295,7 +330,7 @@ func (m *Management) route(t string, row []string) { // {{{
 				//log.Info("Adding new client: ", cn)
 				m.Conn.Clients[cn] = &Client{
 					CommonName:   cn,
-					PublicIP:     cn,
+					PublicIP:     "",
 					BytesRecived: "0",
 					BytesSent:    "0",
 					LastRef:      "0",
@@ -344,6 +379,7 @@ func (m *Management) clientList(match []string) { // {{{
 		if _, ok := m.Conn.Clients[c["Common Name"]]; ok {
 			delete(checked, c["Common Name"]) // Remove from checked
 			m.Conn.Clients[c["Common Name"]].missing = 0
+			m.Conn.Clients[c["Common Name"]].PublicIP = c["Real Address"]
 			m.Conn.Clients[c["Common Name"]].BytesRecived = c["Bytes Received"]
 			m.Conn.Clients[c["Common Name"]].BytesSent = c["Bytes Sent"]
 			m.Conn.Clients[c["Common Name"]].LastRef = c["Last Ref"]

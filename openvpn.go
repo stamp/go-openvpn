@@ -57,12 +57,12 @@ func NewSslServer(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openss
 
 	p.SetConfig(c)
 	return p
-}                                           // }}}
-func NewSslClient(remote string) *Process { // {{{
+}                                                                                                               // }}}
+func NewSslClient(remote string, ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) *Process { // {{{
 	p := NewProcess()
 	c := NewConfig()
 
-	c.ClientMode()
+	c.ClientMode(ca, cert, dh, ta)
 	c.Remote(remote, 1194)
 	c.Device("tun")
 

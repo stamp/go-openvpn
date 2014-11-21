@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	remote string
 	flags  map[string]bool
 	values map[string]string
 	params []string
@@ -132,14 +133,25 @@ func (c *Config) ServerMode(port int, ca *openssl.CA, cert *openssl.Cert, dh *op
 	c.set("cert", cert.GetFilePath())
 	c.set("key", cert.GetKeyPath())
 	c.set("dh", dh.GetFilePath())
-	c.set("tls-auth", ta.GetFilePath())
+	c.set("tls-auth", ta.GetFilePath()+" 0")
 }
-func (c *Config) ClientMode() {
-	c.set("mode", "client")
+func (c *Config) ClientMode(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) {
+	c.flag("client")
+	c.flag("tls-client")
+
+	c.set("ca", ca.GetFilePath())
+	c.set("cert", cert.GetFilePath())
+	c.set("key", cert.GetKeyPath())
+	c.set("dh", dh.GetFilePath())
+	c.set("tls-auth", ta.GetFilePath()+" 1")
+
+	c.set("ns-cert-type", "server")
 }
 
 func (c *Config) Remote(r string, port int) {
-	c.set("remove", r)
+	c.set("port", strconv.Itoa(port))
+	c.set("remote", r)
+	c.remote = r
 }
 func (c *Config) Protocol(p string) {
 	c.set("proto", p)
