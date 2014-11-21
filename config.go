@@ -133,7 +133,7 @@ func (c *Config) ServerMode(port int, ca *openssl.CA, cert *openssl.Cert, dh *op
 	c.set("cert", cert.GetFilePath())
 	c.set("key", cert.GetKeyPath())
 	c.set("dh", dh.GetFilePath())
-	c.set("tls-auth", ta.GetFilePath()+" 0")
+	c.set("tls-auth", ta.GetFilePath())
 }
 func (c *Config) ClientMode(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) {
 	c.flag("client")

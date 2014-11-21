@@ -48,7 +48,7 @@ func NewSslServer(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openss
 
 	c.Device("tun")
 	c.ServerMode(1194, ca, cert, dh, ta)
-	c.IpPool("192.168.11.0/24")
+	c.IpPool("10.255.255.0/24")
 
 	c.KeepAlive(10, 60)
 	c.PingTimerRemote()
