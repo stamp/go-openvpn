@@ -143,9 +143,9 @@ func (c *Config) ClientMode(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, 
 	c.set("cert", cert.GetFilePath())
 	c.set("key", cert.GetKeyPath())
 	c.set("dh", dh.GetFilePath())
-	c.set("tls-auth", ta.GetFilePath()+" 1")
+	c.set("tls-auth", ta.GetFilePath())
 
-	c.set("ns-cert-type", "server")
+	//c.set("ns-cert-type", "server")
 }
 
 func (c *Config) Remote(r string, port int) {
