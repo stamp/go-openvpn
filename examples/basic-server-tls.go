@@ -8,10 +8,7 @@ import (
 )
 
 func main() {
-
-	// First generate a static key using:
-	// openvpn --genkey --secret pre-shared.key
-	// and distribute to both client and server
+	// This example first tries to load and if not found creates all the components needed for a TLS tunnel
 
 	var err error
 	var ca *openssl.CA
@@ -48,10 +45,13 @@ func main() {
 		return
 	}
 
+	// Create the openvpn instance
 	p := openvpn.NewSslServer(ca, cert, dh, ta)
 
+	// Start the process
 	p.Start()
 
+	// Listen for events
 	for {
 		select {
 		case event := <-p.Events:
