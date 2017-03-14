@@ -14,7 +14,7 @@ func main() {
 	// and distribute to both client and server
 
 	// Create the openvpn instance
-	p := openvpn.NewStaticKeyServer("pre-shared.key")
+	p := openvpn.NewStaticKeyServer("pre-shared.key", "")
 
 	// Start the process
 	p.Start()

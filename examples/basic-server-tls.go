@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Create the openvpn instance
-	p := openvpn.NewSslServer(ca, cert, dh, ta)
+	p := openvpn.NewSslServer(ca, cert, dh, ta, "sample-config-ssl-server.json")
 
 	// Start the process
 	p.Start()
