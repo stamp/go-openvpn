@@ -42,10 +42,17 @@ func NewProcess() *Process {
 
 // Short-hands for some basic openvpn operating modes
 
-func NewSslServer(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) *Process { // {{{
+func NewSslServer(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA, configFile string) *Process { // {{{
 	p := NewProcess()
 	c := NewConfig()
-
+	if configFile != "" {
+		err := c.LoadFile(configFile)
+		if err != nil {
+			log.Warn("Failed to load cnfiguration file provided:", err.Error())
+		} else {
+			log.Debug("Using configuration file :", configFile)
+		}
+	}
 	c.Device("tun")
 	c.ServerMode(1194, ca, cert, dh, ta)
 	c.IpPool("10.255.255.0/24")
@@ -57,10 +64,19 @@ func NewSslServer(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openss
 
 	p.SetConfig(c)
 	return p
-}                                                                                                               // }}}
-func NewSslClient(remote string, ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) *Process { // {{{
+}                                                                                                                                  // }}}
+func NewSslClient(remote string, ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA, configFile string) *Process { // {{{
 	p := NewProcess()
 	c := NewConfig()
+	//Load configuration file provided
+	if configFile != "" {
+		err := c.LoadFile(configFile)
+		if err != nil {
+			log.Error("Error loading configuration file: ", err.Error())
+		} else {
+			log.Debug("Loaded configuration file: ", configFile)
+		}
+	}
 
 	c.ClientMode(ca, cert, dh, ta)
 	c.Remote(remote, 1194)
@@ -73,11 +89,19 @@ func NewSslClient(remote string, ca *openssl.CA, cert *openssl.Cert, dh *openssl
 
 	p.SetConfig(c)
 	return p
-}                                              // }}}
-func NewStaticKeyServer(key string) *Process { // {{{
+}                                                                 // }}}
+func NewStaticKeyServer(key string, configFile string) *Process { // {{{
 	p := NewProcess()
 	c := NewConfig()
-
+	//Load configuration file provided
+	if configFile != "" {
+		err := c.LoadFile(configFile)
+		if err != nil {
+			log.Error("Error loading configuration file: ", err.Error())
+		} else {
+			log.Debug("Loaded configuration file: ", configFile)
+		}
+	}
 	c.Device("tun")
 	c.IpConfig("10.8.0.1", "10.8.0.2")
 	c.Secret(key)
@@ -89,11 +113,19 @@ func NewStaticKeyServer(key string) *Process { // {{{
 
 	p.SetConfig(c)
 	return p
-}                                                      // }}}
-func NewStaticKeyClient(remote, key string) *Process { // {{{
+}                                                                         // }}}
+func NewStaticKeyClient(remote, key string, configFile string) *Process { // {{{
 	p := NewProcess()
 	c := NewConfig()
-
+	//Load configuration file provided
+	if configFile != "" {
+		err := c.LoadFile(configFile)
+		if err != nil {
+			log.Error("Error loading configuration file: ", err.Error())
+		} else {
+			log.Debug("Loaded configuration file: ", configFile)
+		}
+	}
 	c.Remote(remote, 1194)
 	c.Device("tun")
 	c.IpConfig("10.8.0.2", "10.8.0.1")

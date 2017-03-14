@@ -1,12 +1,14 @@
 package openvpn
 
 import (
-	"net"
-	"strconv"
-	"strings"
-
+	"encoding/json"
+	"errors"
 	log "github.com/cihub/seelog"
 	"github.com/stamp/go-openssl"
+	"net"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -24,19 +26,91 @@ func NewConfig() *Config {
 	}
 }
 
-func (c *Config) Set(key, val string) {
-	a := strings.Split("--"+key+" "+val, " ")
-	for _, ar := range a {
-		c.params = append(c.params, ar)
+/**
+Loads configuration from the given file, A  configuration is only valid if:
+1. It is a string- In this case, append a # symbol at the end to ignore
+2. Array of flags-- In this case, append # symbol at the end of the flag to ignore it
+3. Array of push params-- Append # as above to ignore a push
+*/
+func (c *Config) LoadFile(filename string) error {
+	cfgFile, err := os.Open(filename)
+	if err != nil {
+		return errors.New("File " + filename + " could not be read: " + err.Error())
+	}
+	var cc interface{}
+	loader := json.NewDecoder(cfgFile)
+	errd := loader.Decode(&cc)
+	if errd != nil {
+		return errors.New("Could not decode JSON file: " + errd.Error())
+	}
+	jmap := cc.(map[string]interface{})
+	for k, v := range jmap {
+		switch vu := v.(type) {
+		case string:
+			s := v.(string)
+			if !strings.HasSuffix(s, "#") {
+				c.Set(k, s)
+			}
+		case []interface{}:
+			if k == "flags" {
+				for _, vv := range vu {
+					if !strings.HasSuffix(vv.(string), "#") {
+						c.Flag(vv.(string))
+					}
+				}
+			} else {
+				for _, vv := range vu {
+					if !strings.HasSuffix(vv.(string), "#") {
+						c.Flag(k + " \"" + vv.(string) + "\"")
+					}
+				}
+			}
+		default:
+			log.Debug("Not valid variable", k, ":", v)
+		}
+
+	}
+	return nil
+}
+
+func (c *Config) Refresh() {
+	c.params = c.params[0:0] //Clear the array first
+	for key, val := range c.values {
+		a := strings.Split("--"+key+" "+val, " ")
+		for _, ar := range a {
+			c.params = append(c.params, ar)
+		}
+	}
+	for key, val := range c.flags {
+		if val {
+			a := strings.Split("--"+key, " ")
+			for _, er := range a {
+				c.params = append(c.params, er)
+			}
+		}
 	}
 }
 
-func (c *Config) Flag(key string) {
-	//c.params = append(c.params, "--"+key)
-	a := strings.Split("--"+key, " ")
-	for _, ar := range a {
-		c.params = append(c.params, ar)
+/**
+If called for a second time replace the key
+*/
+func (c *Config) Set(key, val string) {
+	if v, ok := c.values[key]; ok {
+		if v == val { //Skip if already set
+			return
+		}
+		delete(c.values, key)
 	}
+	c.values[key] = val
+	c.Refresh()
+}
+
+func (c *Config) Flag(key string) {
+	if _, ok := c.flags[key]; ok { //Skip if already set
+		return
+	}
+	c.flags[key] = true
+	c.Refresh()
 }
 
 func (c *Config) Validate() (config []string, err error) {
@@ -53,7 +127,7 @@ func (c *Config) ServerMode(port int, ca *openssl.CA, cert *openssl.Cert, dh *op
 	c.Set("cert", cert.GetFilePath())
 	c.Set("key", cert.GetKeyPath())
 	c.Set("dh", dh.GetFilePath())
-	c.Set("tls-auth", ta.GetFilePath())
+	c.Set("tls-auth", ta.GetFilePath()+" 0")
 }
 func (c *Config) ClientMode(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, ta *openssl.TA) {
 	c.Flag("client")
@@ -63,7 +137,7 @@ func (c *Config) ClientMode(ca *openssl.CA, cert *openssl.Cert, dh *openssl.DH, 
 	c.Set("cert", cert.GetFilePath())
 	c.Set("key", cert.GetKeyPath())
 	c.Set("dh", dh.GetFilePath())
-	c.Set("tls-auth", ta.GetFilePath())
+	c.Set("tls-auth", ta.GetFilePath()+" 1")
 }
 
 func (c *Config) Remote(r string, port int) {
