@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"net"
 	"net/textproto"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,8 +14,11 @@ import (
 	log "github.com/cihub/seelog"
 )
 
+var uniqId = 0
+
 func (m *Management) Start() (path string, err error) { // {{{
-	m.Path = "/tmp/openvpn-management-" + strconv.Itoa(os.Getpid()) + ".sock"
+	m.Path = "/tmp/openvpn-management-" + strconv.Itoa(uniqId) + ".sock"
+	uniqId += 1
 
 	log.Info("Management start: unix:" + m.Path)
 
@@ -379,7 +381,7 @@ func (m *Management) clientList(match []string) { // {{{
 	}
 
 	// Remove all clients that isnt connected
-	for index, _ := range checked {
+	for index := range checked {
 		m.Conn.Clients[index].missing++
 
 		if m.Conn.Clients[index].missing > 5 {
@@ -400,7 +402,7 @@ func (m *Management) clientList(match []string) { // {{{
 	//192.168.11.4,VPN_client,10.13.156.4:1194,Thu Feb 13 23:39:20 2014
 
 	//Max bcast/mcast queue length,0
-}                                                          // }}}
+} // }}}
 func makeCsvList(data string) (list []map[string]string) { // {{{
 	list = make([]map[string]string, 0)
 
