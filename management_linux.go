@@ -74,10 +74,17 @@ func (m *Management) server(c net.Conn) { // {{{
 		//c.Write([]byte("status\n"))
 
 		if m.Conn.config.remote == "" {
-			log.Info("Management started in SERVER mode")
+			log.Infof("Management started in SERVER mode")
+			t := time.NewTicker( time.Second * 10)
 			for {
-				<-time.After(time.Second * 1)
-				c.Write([]byte("status\n"))
+				select {
+				case <-m.shutdown:
+					t.Stop()
+					log.Infof("Management: closed")
+					return
+				case <-t.C:
+					c.Write([]byte("status\n"))
+				}
 			}
 		} else {
 			log.Info("Management started in CLIENT mode")
@@ -96,21 +103,30 @@ func (m *Management) server(c net.Conn) { // {{{
 
 	go func() {
 		for {
-			rows := <-m.events
-			m.route(c, rows[0], rows[1:])
+			select {
+			case <-m.shutdown:
+				log.Infof("Management: closed")
+				return
+			case rows := <-m.events:
+				m.route(c, rows[0], rows[1:])
+			}
 		}
 	}()
 
 	reader := bufio.NewReader(c)
 	tp := textproto.NewReader(reader)
 	for {
-		line, err := tp.ReadLine()
-		if err != nil {
+		select {
+		case <-m.shutdown:
+			log.Infof("Management: closed")
 			return
+		case <- time.After( 1 * time.Second):
+			line, err := tp.ReadLine()
+			if err != nil {
+				return
+			}
+			m.parse([]byte(line), false)
 		}
-		//log.Info("Recived: ", line)
-
-		m.parse([]byte(line), false)
 	}
 } // }}}
 
