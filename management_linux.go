@@ -74,13 +74,13 @@ func (m *Management) server(c net.Conn) { // {{{
 		//c.Write([]byte("status\n"))
 
 		if m.Conn.config.remote == "" {
-			log.Infof("Management started in SERVER mode")
+			log.Info("Management started in SERVER mode")
 			t := time.NewTicker( time.Second * 10)
 			for {
 				select {
 				case <-m.shutdown:
 					t.Stop()
-					log.Infof("Management: closed")
+					log.Info("Management: closed")
 					return
 				case <-t.C:
 					c.Write([]byte("status\n"))
@@ -105,7 +105,7 @@ func (m *Management) server(c net.Conn) { // {{{
 		for {
 			select {
 			case <-m.shutdown:
-				log.Infof("Management: closed")
+				log.Info("Management: closed")
 				return
 			case rows := <-m.events:
 				m.route(c, rows[0], rows[1:])
@@ -118,7 +118,7 @@ func (m *Management) server(c net.Conn) { // {{{
 	for {
 		select {
 		case <-m.shutdown:
-			log.Infof("Management: closed")
+			log.Info("Management: closed")
 			return
 		case <- time.After( 1 * time.Second):
 			line, err := tp.ReadLine()
